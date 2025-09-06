@@ -1,0 +1,5 @@
+# Block any raw .mp4s by default
+assets/videos/*.mp4
+
+# Allow only the compressed ones
+!assets/videos/*_pages.mp4
