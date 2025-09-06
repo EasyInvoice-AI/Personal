@@ -143,9 +143,7 @@
 
       <!-- Controls -->
       <div class="hero-controls">
-        <button id="playPause" class="ctrl">Pause</button>
-        <button id="muteToggle" class="ctrl">Unmute</button>
-        <div id="dots" class="flex items-center gap-2"></div>
+        <button id="nextVideoBtn" class="ctrl">Next Video</button>
       </div>
     </div>
 
@@ -464,55 +462,27 @@
     </script>
     <script>
       (function () {
-        // ====== CONFIG ======
-        const v = 'pages-v1';
         const SOURCES = [
-          "assets/videos/Main1_pages.mp4?" + v,
-          "assets/videos/Main2_pages.mp4?" + v,
-          "assets/videos/Main3_pages.mp4?" + v,
-          "assets/videos/Main4_pages.mp4?" + v,
-          "assets/videos/Main5_pages.mp4?" + v,
+          "assets/videos/Main1_pages.mp4?pages-v1",
+          "assets/videos/Main2_pages.mp4?pages-v1",
+          "assets/videos/Main3_pages.mp4?pages-v1",
+          "assets/videos/Main4_pages.mp4?pages-v1",
+          "assets/videos/Main5_pages.mp4?pages-v1",
         ];
-        const LOOPS_PER_CLIP = 2;   // play each clip twice
-        const FADE_MS = 500;        // crossfade duration
-        const MANUAL_PAUSE_MS = 12000; // pause auto-advance after manual jump
+        const FADE_MS = 500;
 
-        // ====== ELEMENTS ======
         const a = document.getElementById("vidA");
         const b = document.getElementById("vidB");
-        const dotsWrap = document.getElementById("dots");
-        const playPauseBtn = document.getElementById("playPause");
-        const muteBtn = document.getElementById("muteToggle");
+        const nextVideoBtn = document.getElementById("nextVideoBtn"); // New button ID
 
-        // Initial state
         let activeIndex = 0;
         let frontIsA = true;
-        let loopCount = 0;
-        let playing = true;
-        let muted = true;
-        let manualUntil = 0;
 
-        // Build dots
-        const dots = SOURCES.map((_, i) => {
-          const d = document.createElement("button");
-          d.className = "dot" + (i === activeIndex ? " active" : "");
-          d.setAttribute("aria-label", `Show video ${i + 1}`);
-          d.onclick = () => jumpTo(i);
-          dotsWrap.appendChild(d);
-          return d;
-        });
-        function paintDots(idx) {
-          dots.forEach((d, i) => d.classList.toggle("active", i === idx));
-        }
-
-        // Prime videos
         [a, b].forEach(v => {
-          v.style.opacity = "0";
-          v.muted = true;            // required for mobile autoplay
+          v.muted = true;
           v.playsInline = true;
           v.preload = "auto";
         });
-        a.style.opacity = "1"; // front
 
         a.src = SOURCES[0];
         b.src = SOURCES[1 % SOURCES.length];
@@ -521,70 +491,31 @@
         const onEndedB = () => handleEnded(b);
         a.addEventListener("ended", onEndedA);
 
-        a.play().catch(()=>{});
+        a.play().catch(() => {});
 
-        // Controls
-        playPauseBtn.onclick = () => {
-          playing = !playing;
-          playPauseBtn.textContent = playing ? "Pause" : "Play";
-          [a,b].forEach(v => playing ? v.play().catch(()=>{}) : v.pause());
-        };
-        muteBtn.onclick = () => {
-          muted = !muted;
-          muteBtn.textContent = muted ? "Unmute" : "Mute";
-          [a,b].forEach(v => v.muted = muted);
-        };
-
-        // Visibility: pause when tab hidden (saves battery)
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "hidden") {
-            [a,b].forEach(v=>v.pause());
-          } else if (playing) {
-            const front = frontIsA ? a : b;
-            front.play().catch(()=>{});
-          }
-        });
-
-        function now(){ return Date.now(); }
-
+        // Handle video ending
         function handleEnded(front) {
-          // If user interacted recently or we're paused, replay same clip
-          if (now() < manualUntil || !playing) {
-            front.currentTime = 0;
-            front.play().catch(()=>{});
-            return;
-          }
-          loopCount += 1;
-          if (loopCount >= LOOPS_PER_CLIP) {
-            loopCount = 0;
-            const nextIdx = (activeIndex + 1) % SOURCES.length;
-            crossfadeTo(nextIdx);
-          } else {
-            front.currentTime = 0;
-            front.play().catch(()=>{});
-          }
+          const nextIdx = (activeIndex + 1) % SOURCES.length;
+          crossfadeTo(nextIdx);
         }
 
+        // Crossfade to next video
         function crossfadeTo(targetIdx) {
           const front = frontIsA ? a : b;
-          const back  = frontIsA ? b : a;
+          const back = frontIsA ? b : a;
 
-          // Prepare next on the back buffer
           back.src = SOURCES[targetIdx];
           back.currentTime = 0;
           back.style.transition = `opacity ${FADE_MS}ms ease`;
 
-          // Start back first to avoid black frames
-          back.play().catch(()=>{});
+          back.play().catch(() => {});
 
-          // Fade
-          requestAnimationFrame(()=>{
+          requestAnimationFrame(() => {
             back.style.opacity = "1";
             front.style.opacity = "0";
           });
 
-          // After fade completes, swap roles & handlers
-          setTimeout(()=>{
+          setTimeout(() => {
             front.pause();
             front.removeEventListener("ended", frontIsA ? onEndedA : onEndedB);
             back.removeEventListener("ended", frontIsA ? onEndedB : onEndedA);
@@ -592,9 +523,7 @@
 
             activeIndex = targetIdx;
             frontIsA = !frontIsA;
-            paintDots(activeIndex);
 
-            // Preload the *next* clip into the hidden element
             const hidden = frontIsA ? b : a;
             const nextIdx = (targetIdx + 1) % SOURCES.length;
             hidden.src = SOURCES[nextIdx];
@@ -602,12 +531,11 @@
           }, FADE_MS + 40);
         }
 
-        function jumpTo(i) {
-          if (i === activeIndex) return;
-          loopCount = 0;
-          manualUntil = now() + MANUAL_PAUSE_MS;
-          crossfadeTo(i);
-        }
+        // Next video button click handler
+        nextVideoBtn.onclick = () => {
+          const nextIdx = (activeIndex + 1) % SOURCES.length;
+          crossfadeTo(nextIdx);
+        };
       })();
     </script>
 </body>
