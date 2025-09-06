@@ -38,6 +38,66 @@
             background-size: cover;
             background-position: center;
         }
+
+        /* Video Carousel Styles */
+        .bg-video-wrap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+        }
+        .bg-video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: auto;
+            height: auto;
+            min-width: 100%;
+            min-height: 100%;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+        }
+        .hero-controls {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: rgba(0,0,0,0.5);
+            padding: 0.5rem 1rem;
+            border-radius: 99px;
+        }
+        .ctrl {
+            background: none;
+            border: 1px solid white;
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 99px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .ctrl:hover {
+            background: white;
+            color: black;
+        }
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.5);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dot.active {
+            background: white;
+            transform: scale(1.2);
+        }
     </style>
 </head>
 
@@ -73,13 +133,35 @@
         </div>
     </header>
 
-    <!-- Hero Section -->
-    <section class="hero h-screen flex items-center justify-center text-white">
-        <video autoplay loop muted playsinline class="absolute inset-0 w-full h-full object-cover">
-            <source src="assets/videos/Main.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
+    <!-- Background Video Layer -->
+    <div class="bg-video-wrap" aria-hidden="true">
+      <!-- Two stacked videos for seamless crossfade -->
+      <video id="vidA" class="bg-video" autoplay muted playsinline preload="auto"></video>
+      <video id="vidB" class="bg-video" autoplay muted playsinline preload="auto"></video>
+      <!-- readability overlay -->
+      <div class="pointer-events-none absolute inset-0 bg-black/30"></div>
+
+      <!-- Controls -->
+      <div class="hero-controls">
+        <button id="playPause" class="ctrl">Pause</button>
+        <button id="muteToggle" class="ctrl">Unmute</button>
+        <div id="dots" class="flex items-center gap-2"></div>
+      </div>
+    </div>
+
+    <!-- Hero Section (content sits ABOVE videos) -->
+    <section class="hero h-screen flex items-center justify-center text-white relative z-10">
+      <div class="text-center bg-black/50 p-8 rounded-lg">
+        <!-- Put any hero title/CTA here if you want -->
+      </div>
     </section>
+
+    <!-- No-JS fallback image (optional) -->
+    <noscript>
+      <style>.bg-video-wrap{display:none!important}</style>
+      <section class="hero h-screen flex items-center justify-center text-white"
+               style="background:url('/posters/hero.jpg') center/cover no-repeat"></section>
+    </noscript>
 
     <!-- About Section Container -->
     <main id="about" class="container mx-auto px-6 py-12 md:py-20 scroll-mt-24">
@@ -274,7 +356,7 @@
                     <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path fill-rule="evenodd"
                             d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"
-                            clip-rule="evenodd" />
+                                    clip-rule="evenodd" />
                     </svg>
                 </a>
             </div>
@@ -382,7 +464,153 @@
 
         showLandscapesSlide(landscapesCurrentSlide);
     </script>
+    <script>
+      (function () {
+        // ====== CONFIG ======
+        const SOURCES = [
+          "assets/videos/Main.mp4",
+          "assets/videos/Main.mp4",
+          "assets/videos/Main.mp4",
+          "assets/videos/Main.mp4",
+          "assets/videos/Main.mp4",
+        ];
+        const LOOPS_PER_CLIP = 2;   // play each clip twice
+        const FADE_MS = 500;        // crossfade duration
+        const MANUAL_PAUSE_MS = 12000; // pause auto-advance after manual jump
+
+        // ====== ELEMENTS ======
+        const a = document.getElementById("vidA");
+        const b = document.getElementById("vidB");
+        const dotsWrap = document.getElementById("dots");
+        const playPauseBtn = document.getElementById("playPause");
+        const muteBtn = document.getElementById("muteToggle");
+
+        // Initial state
+        let activeIndex = 0;
+        let frontIsA = true;
+        let loopCount = 0;
+        let playing = true;
+        let muted = true;
+        let manualUntil = 0;
+
+        // Build dots
+        const dots = SOURCES.map((_, i) => {
+          const d = document.createElement("button");
+          d.className = "dot" + (i === activeIndex ? " active" : "");
+          d.setAttribute("aria-label", `Show video ${i + 1}`);
+          d.onclick = () => jumpTo(i);
+          dotsWrap.appendChild(d);
+          return d;
+        });
+        function paintDots(idx) {
+          dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+        }
+
+        // Prime videos
+        [a, b].forEach(v => {
+          v.style.opacity = "0";
+          v.muted = true;            // required for mobile autoplay
+          v.playsInline = true;
+          v.preload = "auto";
+        });
+        a.style.opacity = "1"; // front
+
+        a.src = SOURCES[0];
+        b.src = SOURCES[1 % SOURCES.length];
+
+        const onEndedA = () => handleEnded(a);
+        const onEndedB = () => handleEnded(b);
+        a.addEventListener("ended", onEndedA);
+
+        a.play().catch(()=>{});
+
+        // Controls
+        playPauseBtn.onclick = () => {
+          playing = !playing;
+          playPauseBtn.textContent = playing ? "Pause" : "Play";
+          [a,b].forEach(v => playing ? v.play().catch(()=>{}) : v.pause());
+        };
+        muteBtn.onclick = () => {
+          muted = !muted;
+          muteBtn.textContent = muted ? "Unmute" : "Mute";
+          [a,b].forEach(v => v.muted = muted);
+        };
+
+        // Visibility: pause when tab hidden (saves battery)
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "hidden") {
+            [a,b].forEach(v=>v.pause());
+          } else if (playing) {
+            const front = frontIsA ? a : b;
+            front.play().catch(()=>{});
+          }
+        });
+
+        function now(){ return Date.now(); }
+
+        function handleEnded(front) {
+          // If user interacted recently or we're paused, replay same clip
+          if (now() < manualUntil || !playing) {
+            front.currentTime = 0;
+            front.play().catch(()=>{});
+            return;
+          }
+          loopCount += 1;
+          if (loopCount >= LOOPS_PER_CLIP) {
+            loopCount = 0;
+            const nextIdx = (activeIndex + 1) % SOURCES.length;
+            crossfadeTo(nextIdx);
+          } else {
+            front.currentTime = 0;
+            front.play().catch(()=>{});
+          }
+        }
+
+        function crossfadeTo(targetIdx) {
+          const front = frontIsA ? a : b;
+          const back  = frontIsA ? b : a;
+
+          // Prepare next on the back buffer
+          back.src = SOURCES[targetIdx];
+          back.currentTime = 0;
+          back.style.transition = `opacity ${FADE_MS}ms ease`;
+
+          // Start back first to avoid black frames
+          back.play().catch(()=>{});
+
+          // Fade
+          requestAnimationFrame(()=>{
+            back.style.opacity = "1";
+            front.style.opacity = "0";
+          });
+
+          // After fade completes, swap roles & handlers
+          setTimeout(()=>{
+            front.pause();
+            front.removeEventListener("ended", frontIsA ? onEndedA : onEndedB);
+            back.removeEventListener("ended", frontIsA ? onEndedB : onEndedA);
+            back.addEventListener("ended", frontIsA ? onEndedB : onEndedA);
+
+            activeIndex = targetIdx;
+            frontIsA = !frontIsA;
+            paintDots(activeIndex);
+
+            // Preload the *next* clip into the hidden element
+            const hidden = frontIsA ? b : a;
+            const nextIdx = (targetIdx + 1) % SOURCES.length;
+            hidden.src = SOURCES[nextIdx];
+            hidden.load();
+          }, FADE_MS + 40);
+        }
+
+        function jumpTo(i) {
+          if (i === activeIndex) return;
+          loopCount = 0;
+          manualUntil = now() + MANUAL_PAUSE_MS;
+          crossfadeTo(i);
+        }
+      })();
+    </script>
 </body>
 
 </html>
-
