@@ -93,7 +93,7 @@
 </head>
 
 <body class="text-gray-800">
-    <button id="testButton" style="position: fixed; top: 10px; left: 10px; z-index: 9999;">Test Button</button>
+    
 
     <!-- Header / Navigation -->
     <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-sm shadow-md">
@@ -454,95 +454,93 @@
         showLandscapesSlide(landscapesCurrentSlide);
     </script>
     <script>
-      (function () {
-        const SOURCES = [
-          "assets/videos/Main1_pages.mp4?pages-v1",
-          "assets/videos/Main2_pages.mp4?pages-v1",
-          "assets/videos/Main3_pages.mp4?pages-v1",
-          "assets/videos/Main4_pages.mp4?pages-v1",
-          "assets/videos/Main5_pages.mp4?pages-v1",
-        ];
-        const FADE_MS = 500;
+      document.addEventListener('DOMContentLoaded', function() {
+        (function () {
+          const SOURCES = [
+            "assets/videos/Main1_pages.mp4?pages-v1",
+            "assets/videos/Main2_pages.mp4?pages-v1",
+            "assets/videos/Main3_pages.mp4?pages-v1",
+            "assets/videos/Main4_pages.mp4?pages-v1",
+            "assets/videos/Main5_pages.mp4?pages-v1",
+          ];
+          const FADE_MS = 500;
 
-        const a = document.getElementById("vidA");
-        const b = document.getElementById("vidB");
-        const prevVideoBtn = document.getElementById("prevVideoBtn");
-        const nextVideoBtn = document.getElementById("nextVideoBtn");
+          const a = document.getElementById("vidA");
+          const b = document.getElementById("vidB");
+          const prevVideoBtn = document.getElementById("prevVideoBtn");
+          const nextVideoBtn = document.getElementById("nextVideoBtn");
 
-        let activeIndex = 0;
-        let frontIsA = true;
+          let activeIndex = 0;
+          let frontIsA = true;
 
-        [a, b].forEach(v => {
-          v.muted = true;
-          v.playsInline = true;
-          v.preload = "auto";
-        });
-
-        a.src = SOURCES[0];
-        b.src = SOURCES[1 % SOURCES.length];
-
-        const onEndedA = () => handleEnded(a);
-        const onEndedB = () => handleEnded(b);
-        a.addEventListener("ended", onEndedA);
-
-        a.play().catch(() => {});
-
-        // Handle video ending
-        function handleEnded(front) {
-          const nextIdx = (activeIndex + 1) % SOURCES.length;
-          crossfadeTo(nextIdx);
-        }
-
-        // Crossfade to next video
-        function crossfadeTo(targetIdx) {
-          const front = frontIsA ? a : b;
-          const back = frontIsA ? b : a;
-
-          back.src = SOURCES[targetIdx];
-          back.currentTime = 0;
-          back.style.transition = `opacity ${FADE_MS}ms ease`;
-
-          back.play().catch(() => {});
-
-          requestAnimationFrame(() => {
-            back.style.opacity = "1";
-            front.style.opacity = "0";
+          [a, b].forEach(v => {
+            v.muted = true;
+            v.playsInline = true;
+            v.preload = "auto";
           });
 
-          setTimeout(() => {
-            front.pause();
-            front.removeEventListener("ended", frontIsA ? onEndedA : onEndedB);
-            back.removeEventListener("ended", frontIsA ? onEndedB : onEndedA);
-            back.addEventListener("ended", frontIsA ? onEndedB : onEndedA);
+          a.src = SOURCES[0];
+          b.src = SOURCES[1 % SOURCES.length];
 
-            activeIndex = targetIdx;
-            frontIsA = !frontIsA;
+          const onEndedA = () => handleEnded(a);
+          const onEndedB = () => handleEnded(b);
+          a.addEventListener("ended", onEndedA);
 
-            const hidden = frontIsA ? b : a;
-            const nextIdx = (targetIdx + 1) % SOURCES.length;
-            hidden.src = SOURCES[nextIdx];
-            hidden.load();
-          }, FADE_MS + 40);
-        }
+          a.play().catch(() => {});
 
-        // Previous video button click handler
-        prevVideoBtn.onclick = () => {
-          const prevIdx = (activeIndex - 1 + SOURCES.length) % SOURCES.length;
-          crossfadeTo(prevIdx);
-        };
+          // Handle video ending
+          function handleEnded(front) {
+            const nextIdx = (activeIndex + 1) % SOURCES.length;
+            crossfadeTo(nextIdx);
+          }
 
-        // Next video button click handler
-        nextVideoBtn.onclick = () => {
-          const nextIdx = (activeIndex + 1) % SOURCES.length;
-          crossfadeTo(nextIdx);
-        };
-      })();
+          // Crossfade to next video
+          function crossfadeTo(targetIdx) {
+            const front = frontIsA ? a : b;
+            const back = frontIsA ? b : a;
+
+            back.src = SOURCES[targetIdx];
+            back.currentTime = 0;
+            back.style.transition = `opacity ${FADE_MS}ms ease`;
+
+            back.play().catch(() => {});
+
+            requestAnimationFrame(() => {
+              back.style.opacity = "1";
+              front.style.opacity = "0";
+            });
+
+            setTimeout(() => {
+              front.pause();
+              front.removeEventListener("ended", frontIsA ? onEndedA : onEndedB);
+              back.removeEventListener("ended", frontIsA ? onEndedB : onEndedA);
+              back.addEventListener("ended", frontIsA ? onEndedB : onEndedA);
+
+              activeIndex = targetIdx;
+              frontIsA = !frontIsA;
+
+              const hidden = frontIsA ? b : a;
+              const nextIdx = (targetIdx + 1) % SOURCES.length;
+              hidden.src = SOURCES[nextIdx];
+              hidden.load();
+            }, FADE_MS + 40);
+          }
+
+          // Previous video button click handler
+          prevVideoBtn.onclick = () => {
+            const prevIdx = (activeIndex - 1 + SOURCES.length) % SOURCES.length;
+            crossfadeTo(prevIdx);
+          };
+
+          // Next video button click handler
+          nextVideoBtn.onclick = () => {
+            const nextIdx = (activeIndex + 1) % SOURCES.length;
+            crossfadeTo(nextIdx);
+          };
+        })();
+      });
     </script>
-    <script>
-      document.getElementById('testButton').onclick = function() {
-        alert('Test button clicked!');
-      };
-    </script>
+    
 </body>
 
 </html>
