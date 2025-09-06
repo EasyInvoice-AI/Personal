@@ -60,43 +60,35 @@
             transform: translate(-50%, -50%);
             object-fit: cover;
         }
-        .hero-controls {
+        .video-nav-arrows {
             position: absolute;
-            bottom: 2rem;
-            left: 50%;
-            transform: translateX(-50%);
+            top: 50%;
+            width: 100%; /* Occupy full width to position arrows */
+            transform: translateY(-50%);
             z-index: 20;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            background: rgba(0,0,0,0.5);
-            padding: 0.5rem 1rem;
-            border-radius: 99px;
+            pointer-events: none; /* Allow clicks to pass through container */
         }
-        .ctrl {
-            background: none;
-            border: 1px solid white;
+        .ctrl.arrow {
+            background: rgba(0,0,0,0.3);
+            border: none;
             color: white;
-            padding: 0.25rem 1rem;
-            border-radius: 99px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .ctrl:hover {
-            background: white;
-            color: black;
-        }
-        .dot {
-            width: 10px;
-            height: 10px;
+            padding: 1rem;
             border-radius: 50%;
-            background: rgba(255,255,255,0.5);
+            font-size: 2rem;
             cursor: pointer;
             transition: all 0.2s ease;
+            pointer-events: auto; /* Allow clicks on buttons */
         }
-        .dot.active {
-            background: white;
-            transform: scale(1.2);
+        .ctrl.arrow:hover {
+            background: rgba(0,0,0,0.6);
+        }
+        .left-arrow {
+            position: absolute;
+            left: 1rem;
+        }
+        .right-arrow {
+            position: absolute;
+            right: 1rem;
         }
     </style>
 </head>
@@ -142,8 +134,9 @@
       <div class="pointer-events-none absolute inset-0 bg-black/30"></div>
 
       <!-- Controls -->
-      <div class="hero-controls">
-        <button id="nextVideoBtn" class="ctrl">Next Video</button>
+      <div class="video-nav-arrows">
+        <button id="prevVideoBtn" class="ctrl arrow left-arrow">&#10094;</button>
+        <button id="nextVideoBtn" class="ctrl arrow right-arrow">&#10095;</button>
       </div>
     </div>
 
@@ -473,7 +466,8 @@
 
         const a = document.getElementById("vidA");
         const b = document.getElementById("vidB");
-        const nextVideoBtn = document.getElementById("nextVideoBtn"); // New button ID
+        const prevVideoBtn = document.getElementById("prevVideoBtn");
+        const nextVideoBtn = document.getElementById("nextVideoBtn");
 
         let activeIndex = 0;
         let frontIsA = true;
@@ -530,6 +524,12 @@
             hidden.load();
           }, FADE_MS + 40);
         }
+
+        // Previous video button click handler
+        prevVideoBtn.onclick = () => {
+          const prevIdx = (activeIndex - 1 + SOURCES.length) % SOURCES.length;
+          crossfadeTo(prevIdx);
+        };
 
         // Next video button click handler
         nextVideoBtn.onclick = () => {
